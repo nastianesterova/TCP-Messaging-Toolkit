@@ -18,20 +18,26 @@ def echo_service(port, reverse):
     else:
         print("no reverse")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # so address can be reused after termination of program
     s.bind((socket.gethostname(), port))
-    s.listen(1)
+    s.listen(1) # listening socket s
     while True:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((socket.gethostname(), port))
-        sock.send(b"hey")
-        (clientsocket, address) = s.accept()
-        z = clientsocket.recv(1024)
-        if(reverse):
-            print(z[::-1])
-            clientsocket.send(z[::-1])
-        else:
-            print(z)
-            clientsocket.send(z)
+        print("Waiting for new connection...")
+        (clientsocket, address) = s.accept() # clientsocket, another socket structure
+        while True:
+            try:
+                z = clientsocket.recv(1024)
+                if len(z) == 0:
+                    break
+                if(reverse):
+                    print(z[::-1])
+                    clientsocket.send(z[::-1])
+                else:
+                    print(z)
+                    clientsocket.send(z)
+            except ConnectionResetError:
+                print("Connection reset by peer.")
+                break
 
 
 if __name__ == '__main__':
@@ -40,12 +46,5 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--port', dest='port', help='port on which service will listen on', required=True, type=int)
     parser.add_argument('-r', '--reverse', dest='reverse', help='reverse the message sent through server', action='store_true')
     args = parser.parse_args()
-    
-    print("Welcome!")
-    print("Listening on port %d" % args.port)
-    if args.reverse is True:
-        print("You specified the -r or --reverse option")
-    else:
-        print("You did not specify the -r or --reverse option")
 
     echo_service(args.port, args.reverse)
