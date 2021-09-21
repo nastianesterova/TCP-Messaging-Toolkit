@@ -19,7 +19,7 @@ def echo_service(port, reverse):
         print("no reverse")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # so address can be reused after termination of program
-    s.bind((socket.gethostname(), port))
+    s.bind(('', port))
     s.listen(1) # listening socket s
     while True:
         print("Waiting for new connection...")
