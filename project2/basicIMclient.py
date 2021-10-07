@@ -46,4 +46,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--nickname', dest='nickname', help='nickname or alias chosen by the user', required=True)
     args = parser.parse_args()
 
-    basicIMclient(args.servername, args.nickname)
+    try:
+        basicIMclient(args.servername, args.nickname)
+    except KeyboardInterrupt:
+        exit(0)

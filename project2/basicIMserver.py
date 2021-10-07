@@ -44,4 +44,7 @@ def runServer():
 
 
 if __name__ == '__main__':
-    runServer()
+    try:
+        runServer()
+    except KeyboardInterrupt:
+        exit(0)
