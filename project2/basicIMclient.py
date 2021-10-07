@@ -3,6 +3,7 @@ import argparse
 
 
 def basicIMclient(s, n):
+    print("servername: %s | nickname: %s" % (s, n))
     pass
 
 

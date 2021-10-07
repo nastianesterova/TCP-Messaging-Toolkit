@@ -7,13 +7,14 @@ import sys
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # tell the computer on what port to listen to
-s.bind(('', 9999))
+s.bind(('', 9998))
 
 s.listen(1)
 
 # wait until we ACCEPT a connection from another host
 # and return a socket ("conn") we can use to talk to it
 conn, addr = s.accept()
+# print("conn.fileno(): %d" % conn.fileno())
 
 # here are the things we want to read from
 read_handles = [ sys.stdin, conn ]
