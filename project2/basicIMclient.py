@@ -6,7 +6,7 @@ import broadcastMsg_pb2
 
 
 def basicIMclient(servername, nickname):
-    print("servername: %s | nickname: %s" % (servername, nickname))
+    #print("servername: %s | nickname: %s" % (servername, nickname))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((servername, 9999))
 
@@ -18,30 +18,23 @@ def basicIMclient(servername, nickname):
     rcv_message = broadcastMsg_pb2.Message()
 
     while True:
-        # this statement is super important... it's the crux of the whole
-        # thing.  In a nutshell, it waits/blocks until there's data to
-        # read from ANY (and potentially more than one) of the elements
-        # defined in read_handles
         ready_to_read_list, _, _ = select.select(read_handles, [], [])
-
-        # if we get here, then there's something to read.  we just need
-        # to figure out what
         
         if sys.stdin in ready_to_read_list:
-            # we have new data from STDIN...
-            # ...so let's actually read it!
+            # new data from STDIN
             user_input = input()
-            # encode input along with nickname using proto buffer
-            send_message.message = user_input
-            # and let's send to the connected party
-            sock.send(send_message.SerializeToString())
+            if user_input.lower().strip() == "exit":
+                exit(0)
+            elif len(user_input) != 0:
+                # encode input along with nickname using proto buffer
+                send_message.message = user_input
+                sock.send(send_message.SerializeToString())
 
         if sock in ready_to_read_list:
             # we have new data from the network!
-            data = sock.recv(1024)
+            data = sock.recv(1280)
             rcv_message = rcv_message.FromString(data)
             if len(data) == 0:
-                print( "Bye!" )
                 exit(0)
             print("%s: %s" % (rcv_message.nickname, rcv_message.message))
 
