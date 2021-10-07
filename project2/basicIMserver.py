@@ -37,10 +37,9 @@ def runServer():
                 print("A client disconnected.")
                 client_conns.remove(connection)
             else:
-                text = str(z, 'utf-8').strip()
                 for other_conn in client_conns:
                     if other_conn is not connection:
-                        other_conn.send((text + "\n").encode('utf-8'))
+                        other_conn.send(z)
                 print(z)
 
 

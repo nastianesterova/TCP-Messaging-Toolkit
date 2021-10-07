@@ -2,15 +2,20 @@ import socket
 import sys
 import argparse
 import select
+import broadcastMsg_pb2
 
 
-def basicIMclient(s, n):
-    print("servername: %s | nickname: %s" % (s, n))
+def basicIMclient(servername, nickname):
+    print("servername: %s | nickname: %s" % (servername, nickname))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((s, 9999))
+    sock.connect((servername, 9999))
 
     # here are the things we want to read from
     read_handles = [ sys.stdin, sock ]
+
+    send_message = broadcastMsg_pb2.Message()
+    send_message.nickname = nickname
+    rcv_message = broadcastMsg_pb2.Message()
 
     while True:
         # this statement is super important... it's the crux of the whole
@@ -26,17 +31,19 @@ def basicIMclient(s, n):
             # we have new data from STDIN...
             # ...so let's actually read it!
             user_input = input()
+            # encode input along with nickname using proto buffer
+            send_message.message = user_input
             # and let's send to the connected party
-            sock.send( (user_input + "\n").encode('utf-8') )
+            sock.send(send_message.SerializeToString())
 
         if sock in ready_to_read_list:
             # we have new data from the network!
-            # ... so let's print it out
             data = sock.recv(1024)
+            rcv_message = rcv_message.FromString(data)
             if len(data) == 0:
                 print( "Bye!" )
                 exit(0)
-            print( data )
+            print("%s: %s" % (rcv_message.nickname, rcv_message.message))
 
 
 if __name__ == '__main__':
