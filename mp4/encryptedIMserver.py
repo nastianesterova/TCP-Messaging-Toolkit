@@ -6,7 +6,6 @@ import struct
 import logging
 import binascii
 
-
 def main():
 
     logging.basicConfig(level=logging.INFO)
@@ -53,7 +52,7 @@ def main():
                                 if other_socket == ready: continue
                                 other_socket.send(data_len_packed)
                                 other_socket.send(protobuf)
-                        except Error as e:
+                        except Exception as e:
                             logging.warn( 'cannot decode EncryptedPackage: %s' % e )
                 except ConnectionResetError:
                     logging.info( 'client (%s) threw a connectionResetError. Removing.'
