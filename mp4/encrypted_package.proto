@@ -10,7 +10,7 @@ syntax = "proto2";
 package demo;
 
 message EncryptedPackage {
-        required bytes iv = 20;
+	required bytes iv = 20;
 	required bytes encryptedMessage = 30;
 }
 
