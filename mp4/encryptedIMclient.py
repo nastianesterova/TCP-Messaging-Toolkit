@@ -26,7 +26,6 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
     
     while True:
         ready_to_read_list, _, _ = select.select(read_handles, [], [])
-        cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
         # if sys.stdin in ready_to_read_list
         # that means there is data in stdin to be read (aka the user must have hit enter)
         if sys.stdin in ready_to_read_list:
@@ -53,11 +52,9 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
                 encrypted_package.iv = np.random.bytes(16) # I'll let you figure this out
                 # To force the keys to be exactly 256 bits long, you can use the SHA-256
                 # hash function on the arguments passed to -c and -a.
-                #cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
+                cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
                 cipher = AES.new(cipher_key, AES.MODE_CBC, encrypted_package.iv)
                 encrypted_package.encryptedMessage = cipher.encrypt(pad(serialized_plaintext_and_mac, 16))
-                #encrypted_package.encryptedMessage = do_encryption(key,serialized_plaintext)
-                #encrypted_package.encryptedMessage = serialized_plaintext # this needs to be encrypted; see above line
                 serialized_encrypted_package = encrypted_package.SerializeToString()
                 
                 # now that we have our final data structure to send over the wire
@@ -82,7 +79,7 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
                 encrypted_package = EncryptedPackage()
                 encrypted_package.ParseFromString(protobuf)
                 #print( 'iv is %s' % binascii.hexlify(encrypted_package.iv))
-                #cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
+                cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
                 cipher2 = AES.new(cipher_key, AES.MODE_CBC, encrypted_package.iv)
                 pt = unpad(cipher2.decrypt(encrypted_package.encryptedMessage), 16)
                 print(pt)
