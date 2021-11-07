@@ -6,11 +6,13 @@ import struct
 import binascii
 #import automator
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Hash import HMAC, SHA256
+from Crypto.Random import get_random_bytes
 from encrypted_package_pb2 import EncryptedPackage, PlaintextAndMAC, IM
 
 
-def basicIMclient(servername, nickname):
+def basicIMclient(servername, nickname, confkey, authkey, port):
     #print("servername: %s | nickname: %s" % (servername, nickname))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((servername, 9999))
@@ -25,6 +27,8 @@ def basicIMclient(servername, nickname):
     while True:
         ready_to_read_list, _, _ = select.select(read_handles, [], [])
         
+        # if sys.stdin in ready_to_read_list
+        # that means there is data in stdin to be read (aka the user must have hit enter)
         if sys.stdin in ready_to_read_list:
             # new data from STDIN
             user_input = input()
@@ -38,14 +42,25 @@ def basicIMclient(servername, nickname):
                 # then we create a structure to hold the serialized IM along with a MAC
                 plaintext = PlaintextAndMAC()
                 plaintext.paddedPlaintext = pad(serialized_im,AES.block_size)
-                plaintext.mac = b'12345'        # I'll let you figure this out
+                # create SHA256 based mac using authkey
+                secret = authkey.encode('utf-8')
+                plaintext.mac = HMAC.new(secret, digestmod=SHA256).hexdigest().encode()  # I'll let you figure this out
                 serialized_plaintext = plaintext.SerializeToString()
 
                 # next, we create a structure to hold the encrypted plaintext+MAC along with an IV
                 encrypted_package = EncryptedPackage()
-                encrypted_package.iv = b'12345' # I'll let you figure this out
+                encrypted_package.iv = get_random_bytes(8) # I'll let you figure this out
+                # To force the keys to be exactly 256 bits long, you can use the SHA-256
+                # hash function on the arguments passed to -c and -a.
+                conf = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).hexdigest().encode()
+                cipher = AES.new(conf, AES.MODE_EAX)
+                nonce = cipher.nonce
+                # what is the tag
+                # what type is plaintext: must be in bytes
+                # where is nonce used in the encryption
+                encrypted_package.encryptedMessage, tag = cipher.encrypt_and_digest(serialized_plaintext)
                 #encrypted_package.encryptedMessage = do_encryption(key,serialized_plaintext)
-                encrypted_package.encryptedMessage = serialized_plaintext # this needs to be encrypted; see above line
+                #encrypted_package.encryptedMessage = serialized_plaintext # this needs to be encrypted; see above line
                 serialized_encrypted_package = encrypted_package.SerializeToString()
                 
                 # now that we have our final data structure to send over the wire
@@ -78,6 +93,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        basicIMclient(args.servername, args.nickname)
+        basicIMclient(args.servername, args.nickname, args.confkey, args.authkey, args.port)
     except KeyboardInterrupt:
         exit(0)
