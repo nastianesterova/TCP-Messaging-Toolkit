@@ -3,7 +3,7 @@ from Crypto.Cipher import AES
 from encrypted_package_pb2 import EncryptedPackage, PlaintextAndMAC, IM
 from Crypto.Util.Padding import pad
 import binascii
-import automator
+#import automator
 
 # first, we take an IM
 im = IM()
