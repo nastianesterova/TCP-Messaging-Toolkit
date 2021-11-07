@@ -1,4 +1,5 @@
 import socket
+import numpy as np
 import sys
 import argparse
 import select
@@ -8,7 +9,6 @@ import binascii
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Hash import HMAC, SHA256
-from Crypto.Random import get_random_bytes
 from encrypted_package_pb2 import EncryptedPackage, PlaintextAndMAC, IM
 
 
@@ -40,25 +40,25 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
                 serialized_im = im.SerializeToString()
 
                 # then we create a structure to hold the serialized IM along with a MAC
-                plaintext = PlaintextAndMAC()
-                plaintext.paddedPlaintext = pad(serialized_im,AES.block_size)
+                plaintext_and_mac = PlaintextAndMAC()
+                plaintext_and_mac.paddedPlaintext = pad(serialized_im, AES.block_size)
                 # create SHA256 based mac using authkey
                 secret = authkey.encode('utf-8')
-                plaintext.mac = HMAC.new(secret, digestmod=SHA256).hexdigest().encode()  # I'll let you figure this out
-                serialized_plaintext = plaintext.SerializeToString()
+                h = HMAC.new(secret, digestmod=SHA256)
+                h.update(im.message.encode('utf-8'))
+                plaintext_and_mac.mac = HMAC.new(secret, digestmod=SHA256).hexdigest().encode('utf-8')  # I'll let you figure this out
+                serialized_plaintext_and_mac = plaintext_and_mac.SerializeToString()
 
                 # next, we create a structure to hold the encrypted plaintext+MAC along with an IV
                 encrypted_package = EncryptedPackage()
-                encrypted_package.iv = get_random_bytes(8) # I'll let you figure this out
+                encrypted_package.iv = np.random.bytes(32) # I'll let you figure this out
                 # To force the keys to be exactly 256 bits long, you can use the SHA-256
                 # hash function on the arguments passed to -c and -a.
                 conf = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).hexdigest().encode()
-                cipher = AES.new(conf, AES.MODE_EAX)
-                nonce = cipher.nonce
+                cipher = AES.new(conf, AES.MODE_CBC, encrypted_package.iv)
                 # what is the tag
                 # what type is plaintext: must be in bytes
-                # where is nonce used in the encryption
-                encrypted_package.encryptedMessage, tag = cipher.encrypt_and_digest(serialized_plaintext)
+                encrypted_package.encryptedMessage, tag = cipher.encrypt_and_digest(serialized_plaintext_and_mac)
                 #encrypted_package.encryptedMessage = do_encryption(key,serialized_plaintext)
                 #encrypted_package.encryptedMessage = serialized_plaintext # this needs to be encrypted; see above line
                 serialized_encrypted_package = encrypted_package.SerializeToString()
