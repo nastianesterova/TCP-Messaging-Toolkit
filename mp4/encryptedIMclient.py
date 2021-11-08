@@ -1,4 +1,5 @@
 import socket
+from typing import Text
 import numpy as np
 import sys
 import argparse
@@ -21,8 +22,8 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
     read_handles = [ sys.stdin, sock ]
 
     # first, take IM
-    im = IM()
-    im.nickname = nickname
+    send_im = IM()
+    send_im.nickname = nickname
     
     while True:
         ready_to_read_list, _, _ = select.select(read_handles, [], [])
@@ -35,8 +36,8 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
                 exit(0)
             elif len(user_input) != 0:
                 # encode input along with nickname using proto buffer
-                im.message = user_input
-                serialized_im = im.SerializeToString()
+                send_im.message = user_input
+                serialized_im = send_im.SerializeToString()
 
                 # then we create a structure to hold the serialized IM along with a MAC
                 plaintext_and_mac = PlaintextAndMAC()
@@ -44,12 +45,12 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
                 # create SHA256 based mac using authkey
                 h = HMAC.new(authkey.encode('utf-8'), digestmod=SHA256)
                 h.update(plaintext_and_mac.paddedPlaintext)
-                plaintext_and_mac.mac = h.digest()  # I'll let you figure this out
+                plaintext_and_mac.mac = h.digest()
                 serialized_plaintext_and_mac = plaintext_and_mac.SerializeToString()
 
                 # next, we create a structure to hold the encrypted plaintext+MAC along with an IV
                 encrypted_package = EncryptedPackage()
-                encrypted_package.iv = np.random.bytes(16) # I'll let you figure this out
+                encrypted_package.iv = np.random.bytes(16)
                 # To force the keys to be exactly 256 bits long, you can use the SHA-256
                 # hash function on the arguments passed to -c and -a.
                 cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
@@ -74,17 +75,37 @@ def basicIMclient(servername, nickname, confkey, authkey, port):
                 print("Server disconnected.")
                 exit(0)
             data_len = struct.unpack('!L',data_len_packed)[0]
-            protobuf = sock.recv(data_len,socket.MSG_WAITALL)
+            serialized_encrypted_package = sock.recv(data_len,socket.MSG_WAITALL)
             try:
                 encrypted_package = EncryptedPackage()
-                encrypted_package.ParseFromString(protobuf)
+                encrypted_package.ParseFromString(serialized_encrypted_package)
+                # need to obtain plaintext and mac from encrypted package
                 #print( 'iv is %s' % binascii.hexlify(encrypted_package.iv))
                 cipher_key = HMAC.new(confkey.encode('utf-8'), digestmod=SHA256).digest()
                 cipher2 = AES.new(cipher_key, AES.MODE_CBC, encrypted_package.iv)
-                pt = unpad(cipher2.decrypt(encrypted_package.encryptedMessage), 16)
-                print(pt)
+                serialized_plaintext_and_mac = unpad(cipher2.decrypt(encrypted_package.encryptedMessage), 16)
             except Exception as e:
                 print( 'cannot decode EncryptedPackage: %s' % e )
+            else:
+                # deserialize plaintext and mac
+                plaintext_and_mac = PlaintextAndMAC()
+                try:
+                    plaintext_and_mac.ParseFromString(serialized_plaintext_and_mac)
+                except Exception as e:
+                    print('cannot deserialize plaintext and mac: %s' % e)
+                else:
+                    # verify mac
+                    h = HMAC.new(authkey.encode('utf-8'), digestmod=SHA256)
+                    h.update(plaintext_and_mac.paddedPlaintext)
+                    if h.digest() == plaintext_and_mac.mac:
+                        # obtain serialized IM from plaintext_and_mac structure
+                        serialized_im = unpad(plaintext_and_mac.paddedPlaintext, AES.block_size)
+                        recv_im = IM()
+                        recv_im.ParseFromString(serialized_im)
+                        print("%s: %s" % (recv_im.nickname, recv_im.message))
+                    else:
+                        print("The message or key is not authentic.")
+            
 
 
 if __name__ == '__main__':
