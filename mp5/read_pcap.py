@@ -2,6 +2,7 @@ from scapy.all import *
 import os
 import numpy as np
 import argparse
+import pandas as pd
 
 def read_pcap_file(filename):
     filepath = os.path.join("pcap_files", filename)
@@ -34,20 +35,45 @@ def calculate_totals(packet_list):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--filename', dest='filename', help='pcap file to read', required=True)
+    parser.add_argument('-f', '--filename', dest='filename', help='pcap file to read')
     args = parser.parse_args()
 
-    packet_list = read_pcap_file(args.filename)
-    
-    stats = calculate_totals(packet_list)
-    tdiff_in = np.diff(stats['times_in'])
-    tdiff_out = np.diff(stats['times_out'])
-    in_mean = np.mean(tdiff_in)
-    in_median = np.median(tdiff_in)
-    in_std = np.std(tdiff_in)
-    out_mean = np.mean(tdiff_out)
-    out_median = np.median(tdiff_out)
-    out_std = np.std(tdiff_out)
+    if args.filename is None:
+        file_list = os.listdir('pcap_files')
+        for file in file_list:
+            packet_list = read_pcap_file(file)
+            stats = calculate_totals(packet_list)
+            tdiff_in = np.diff(stats['times_in'])
+            tdiff_out = np.diff(stats['times_out'])
+            in_mean = np.mean(tdiff_in)
+            in_median = np.median(tdiff_in)
+            in_std = np.std(tdiff_in)
+            out_mean = np.mean(tdiff_out)
+            out_median = np.median(tdiff_out)
+            out_std = np.std(tdiff_out)
+
+            # write to dataframe
+            df = pd.DataFrame()
+            row = {'packets_in': stats['num_in'], 'packets_out': stats['num_out'],
+                'bytes_in': stats['bytes_in'], 'bytes_out': stats['bytes_out'],
+                'tdiff_in': tdiff_in, 'tdiff_out': tdiff_out, 'in_mean': in_mean,
+                'in_median': in_median, 'in_std': in_std, 'out_mean': out_mean,
+                'out_median': out_median, 'out_std': out_std}
+            df = df.append(row, ignore_index=True)
+        df.to_csv('out.csv', index=False)
+    else:
+        packet_list = read_pcap_file(args.filename)
+        stats = calculate_totals(packet_list)
+        tdiff_in = np.diff(stats['times_in'])
+        tdiff_out = np.diff(stats['times_out'])
+        in_mean = np.mean(tdiff_in)
+        in_median = np.median(tdiff_in)
+        in_std = np.std(tdiff_in)
+        out_mean = np.mean(tdiff_out)
+        out_median = np.median(tdiff_out)
+        out_std = np.std(tdiff_out)
+
+    # write the data to a table
 
     """   
     total_packets = len(packet_list)
