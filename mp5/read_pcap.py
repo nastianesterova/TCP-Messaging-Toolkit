@@ -11,13 +11,15 @@ def read_pcap_file(filename):
     return file
 
 
-def calculate_totals(packet_list):
+def calculate_totals(filename, packet_list):
     num_out = 0
     num_in = 0
     bytes_out = 0
     bytes_in = 0
     times_out = []
     times_in = []
+    out_csv = filename + "_out.csv"
+    df = pd.DataFrame()
     for packet in packet_list:
         if IP in packet:
             if packet[IP].src.startswith('192.168'):
@@ -28,6 +30,10 @@ def calculate_totals(packet_list):
                 num_in += 1
                 bytes_in += packet.len
                 times_in.append(packet.time)
+            row = {'Source_IP': packet[IP].src, 'Destination_IP': packet[IP].dst,
+                'packet_len': packet.len, 'time': packet.time}
+            df = df.append(row, ignore_index=True)
+    df.to_csv(out_csv, index=False)
     return dict(num_in=num_in, num_out=num_out, bytes_in=bytes_in, bytes_out=bytes_out,
                 times_in=np.array(times_in), times_out=np.array(times_out))
 
@@ -40,9 +46,10 @@ if __name__ == '__main__':
 
     if args.filename is None:
         file_list = os.listdir('pcap_files')
+        df = pd.DataFrame()
         for file in file_list:
             packet_list = read_pcap_file(file)
-            stats = calculate_totals(packet_list)
+            stats = calculate_totals(file, packet_list)
             tdiff_in = np.diff(stats['times_in'])
             tdiff_out = np.diff(stats['times_out'])
             in_mean = np.mean(tdiff_in)
@@ -53,17 +60,16 @@ if __name__ == '__main__':
             out_std = np.std(tdiff_out)
 
             # write to dataframe
-            df = pd.DataFrame()
-            row = {'packets_in': stats['num_in'], 'packets_out': stats['num_out'],
+            row = {'file': file, 'packets_in': stats['num_in'], 'packets_out': stats['num_out'],
                 'bytes_in': stats['bytes_in'], 'bytes_out': stats['bytes_out'],
-                'tdiff_in': tdiff_in, 'tdiff_out': tdiff_out, 'in_mean': in_mean,
-                'in_median': in_median, 'in_std': in_std, 'out_mean': out_mean,
-                'out_median': out_median, 'out_std': out_std}
+                'time_in_mean': in_mean,
+                'time_in_median': in_median, 'time_in_std': in_std, 'time_out_mean': out_mean,
+                'time_out_median': out_median, 'time_out_std': out_std}
             df = df.append(row, ignore_index=True)
         df.to_csv('out.csv', index=False)
     else:
         packet_list = read_pcap_file(args.filename)
-        stats = calculate_totals(packet_list)
+        stats = calculate_totals(args.filename, packet_list)
         tdiff_in = np.diff(stats['times_in'])
         tdiff_out = np.diff(stats['times_out'])
         in_mean = np.mean(tdiff_in)
