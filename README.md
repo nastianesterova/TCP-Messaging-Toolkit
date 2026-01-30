@@ -1,4 +1,4 @@
-# Network Programming Projects
+# TCP Messaging Toolkit
 
 A collection of network programming assignments demonstrating socket programming, protocol buffers, encryption, and packet analysis in Python.
 
